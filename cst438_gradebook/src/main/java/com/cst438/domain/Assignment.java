@@ -62,8 +62,6 @@ public class Assignment {
 		this.needsGrading = needsGrading;
 	}
 	
-
-	
 	public Course getCourse() {
 		return course;
 	}
