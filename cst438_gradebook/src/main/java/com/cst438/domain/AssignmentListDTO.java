@@ -1,7 +1,9 @@
 package com.cst438.domain;
 
 import java.util.ArrayList;
-
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 /*
  * a transfer object that is a list of assignment details
  */
@@ -13,7 +15,7 @@ public class AssignmentListDTO {
 		public String dueDate;
 		public String courseTitle;
 		public int courseId;
-
+		public AssignmentDTO() { } ;
 		public AssignmentDTO(int assignmentId, int courseId, String assignmentName, String dueDate,
 				String courseTitle) {
 			this.assignmentId = assignmentId;
@@ -28,6 +30,12 @@ public class AssignmentListDTO {
 			return "[assignmentId=" + assignmentId + ", assignmentName=" + assignmentName + ", dueDate="
 					+ dueDate + ", courseTitle=" + courseTitle + ", courseId=" + courseId + "]";
 		}
+		
+		public void setDate(Date date) {
+	        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+	        this.dueDate = dateFormat.format(date);
+		}
+		
 
 
 		@Override
