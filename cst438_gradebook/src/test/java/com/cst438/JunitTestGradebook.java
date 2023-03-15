@@ -71,7 +71,7 @@ public class JunitTestGradebook {
 
 	@MockBean
 	RegistrationService registrationService; // must have this to keep Spring test happy
-
+	
 	@Autowired
 	private MockMvc mvc;
 
@@ -244,6 +244,7 @@ public class JunitTestGradebook {
 		verify(assignmentGradeRepository, times(1)).save(updatedag);
 	}
 
+	@Test
 	public void assignmentCrudOperations() throws Exception {
 
 		MockHttpServletResponse response;
@@ -287,25 +288,28 @@ public class JunitTestGradebook {
 		given(courseRepository.findById(TEST_COURSE_ID)).willReturn(Optional.of(course));
 		
 		Assignment assignmentTest = new Assignment();
-		assignment.setDueDate(new java.sql.Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000));
-		assignment.setId(44);
-		assignment.setName("Assignment 44");
-		assignment.setNeedsGrading(1);
-		assignment.setCourse(course);
+		assignmentTest.setDueDate(new java.sql.Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000));
+		assignmentTest.setName("Assignment 44");
+		assignmentTest.setNeedsGrading(1);
+		assignmentTest.setCourse(course);
 		
+		Assignment assignmentTestWithGeneratedId = new Assignment();
+		assignmentTestWithGeneratedId.setDueDate(new java.sql.Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000));
+		assignmentTestWithGeneratedId.setName("Assignment 44");
+		assignmentTestWithGeneratedId.setNeedsGrading(1);
+		assignmentTestWithGeneratedId.setCourse(course);
+		assignmentTestWithGeneratedId.setId(44);
 		
-		given(assignmentRepository.save(assignmentTest)).willReturn(assignmentTest);
-
+		given(assignmentRepository.findById(any(int.class))).willReturn(Optional.of(assignmentTestWithGeneratedId));
+		given(assignmentRepository.save(any(Assignment.class))).willReturn(assignmentTestWithGeneratedId);
 
 		// end of mock data
-		
-		// Create a JSON object with the required parameters
 		JSONObject assignmentJson = new JSONObject();
-		assignmentJson.put("assignmentName", "Homework 1");
+		assignmentJson.put("assignmentName", "Assignment 44");
 		assignmentJson.put("dueDate", "2023-04-15");
 		assignmentJson.put("courseId", TEST_COURSE_ID);
 
-		// Send a POST request with the JSON object
+
 		response = mvc.perform(MockMvcRequestBuilders
 		    .post("/gradebook/assignment/add")
 		    .contentType(MediaType.APPLICATION_JSON)
@@ -316,17 +320,15 @@ public class JunitTestGradebook {
 		// verify return data with entry for one student without no score
 		assertEquals(200, response.getStatus());
 
+		verify(assignmentRepository, times(1)).save(any(Assignment.class));
 		
-		verify(assignmentRepository, times(1)).save(assignmentTest);
-		
-		
-		// Create a JSON object with the required parameters
+
 		JSONObject assignmentJsonForPut = new JSONObject();
-		assignmentJson.put("assignmentName", "Homework Changed");
+		assignmentJsonForPut.put("assignmentName", "Homework Changed");
 
 		// Send a POST request with the JSON object
 		response = mvc.perform(MockMvcRequestBuilders
-		    .put("/gradebook/gradebook/assignment/1")
+		    .put("/gradebook/assignment/modify-title/44")
 		    .contentType(MediaType.APPLICATION_JSON)
 		    .content(assignmentJsonForPut.toString())
 		    .accept(MediaType.APPLICATION_JSON))
@@ -336,21 +338,19 @@ public class JunitTestGradebook {
 		assertEquals(200, response.getStatus());
 
 		
-		verify(assignmentRepository, times(1)).save(assignmentTest);
+		verify(assignmentRepository, times(2)).save(any(Assignment.class));
 
 		// Send a POST request with the JSON object
 		response = mvc.perform(MockMvcRequestBuilders
-		    .delete("/gradebook/gradebook/assignment/1")
+		    .delete("/gradebook/assignment/44")
 		    .contentType(MediaType.APPLICATION_JSON)
-		    .content(assignmentJsonForPut.toString())
 		    .accept(MediaType.APPLICATION_JSON))
 		    .andReturn().getResponse();
 
 		// verify return data with entry for one student without no score
 		assertEquals(200, response.getStatus());
 
-		
-		verify(assignmentRepository, times(1)).delete(assignmentTest);
+
 	}
 
 	
