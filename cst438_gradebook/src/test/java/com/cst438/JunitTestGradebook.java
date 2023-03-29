@@ -32,6 +32,7 @@ import com.cst438.services.RegistrationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.test.context.ContextConfiguration;
+import org.json.JSONObject;
 
 /* 
  * Example of using Junit with Mockito for mock objects
@@ -70,7 +71,7 @@ public class JunitTestGradebook {
 
 	@MockBean
 	RegistrationService registrationService; // must have this to keep Spring test happy
-
+	
 	@Autowired
 	private MockMvc mvc;
 
@@ -243,6 +244,116 @@ public class JunitTestGradebook {
 		verify(assignmentGradeRepository, times(1)).save(updatedag);
 	}
 
+	@Test
+	public void assignmentCrudOperations() throws Exception {
+
+		MockHttpServletResponse response;
+
+		// mock database data
+
+		Course course = new Course();
+		course.setCourse_id(TEST_COURSE_ID);
+		course.setSemester(TEST_SEMESTER);
+		course.setYear(TEST_YEAR);
+		course.setInstructor(TEST_INSTRUCTOR_EMAIL);
+		course.setEnrollments(new java.util.ArrayList<Enrollment>());
+		course.setAssignments(new java.util.ArrayList<Assignment>());
+
+		Enrollment enrollment = new Enrollment();
+		enrollment.setCourse(course);
+		course.getEnrollments().add(enrollment);
+		enrollment.setId(TEST_COURSE_ID);
+		enrollment.setStudentEmail(TEST_STUDENT_EMAIL);
+		enrollment.setStudentName(TEST_STUDENT_NAME);
+
+		Assignment assignment = new Assignment();
+		assignment.setCourse(course);
+		course.getAssignments().add(assignment);
+		// set dueDate to 1 week before now.
+		assignment.setDueDate(new java.sql.Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000));
+		assignment.setId(1);
+		assignment.setName("Assignment 1");
+		assignment.setNeedsGrading(1);
+
+		AssignmentGrade ag = new AssignmentGrade();
+		ag.setAssignment(assignment);
+		ag.setId(1);
+		ag.setScore("80");
+		ag.setStudentEnrollment(enrollment);
+
+		// given -- stubs for database repositories that return test data
+		given(assignmentRepository.findById(1)).willReturn(Optional.of(assignment));
+		given(assignmentGradeRepository.findByAssignmentIdAndStudentEmail(1, TEST_STUDENT_EMAIL)).willReturn(ag);
+		given(assignmentGradeRepository.findById(1)).willReturn(Optional.of(ag));
+		given(courseRepository.findById(TEST_COURSE_ID)).willReturn(Optional.of(course));
+		
+		Assignment assignmentTest = new Assignment();
+		assignmentTest.setDueDate(new java.sql.Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000));
+		assignmentTest.setName("Assignment 44");
+		assignmentTest.setNeedsGrading(1);
+		assignmentTest.setCourse(course);
+		
+		Assignment assignmentTestWithGeneratedId = new Assignment();
+		assignmentTestWithGeneratedId.setDueDate(new java.sql.Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000));
+		assignmentTestWithGeneratedId.setName("Assignment 44");
+		assignmentTestWithGeneratedId.setNeedsGrading(1);
+		assignmentTestWithGeneratedId.setCourse(course);
+		assignmentTestWithGeneratedId.setId(44);
+		
+		given(assignmentRepository.findById(any(int.class))).willReturn(Optional.of(assignmentTestWithGeneratedId));
+		given(assignmentRepository.save(any(Assignment.class))).willReturn(assignmentTestWithGeneratedId);
+
+		// end of mock data
+		JSONObject assignmentJson = new JSONObject();
+		assignmentJson.put("assignmentName", "Assignment 44");
+		assignmentJson.put("dueDate", "2023-04-15");
+		assignmentJson.put("courseId", TEST_COURSE_ID);
+
+
+		response = mvc.perform(MockMvcRequestBuilders
+		    .post("/gradebook/assignment/add")
+		    .contentType(MediaType.APPLICATION_JSON)
+		    .content(assignmentJson.toString())
+		    .accept(MediaType.APPLICATION_JSON))
+		    .andReturn().getResponse();
+
+		// verify return data with entry for one student without no score
+		assertEquals(200, response.getStatus());
+
+		verify(assignmentRepository, times(1)).save(any(Assignment.class));
+		
+
+		JSONObject assignmentJsonForPut = new JSONObject();
+		assignmentJsonForPut.put("assignmentName", "Homework Changed");
+
+		// Send a POST request with the JSON object
+		response = mvc.perform(MockMvcRequestBuilders
+		    .put("/gradebook/assignment/modify-title/44")
+		    .contentType(MediaType.APPLICATION_JSON)
+		    .content(assignmentJsonForPut.toString())
+		    .accept(MediaType.APPLICATION_JSON))
+		    .andReturn().getResponse();
+
+		// verify return data with entry for one student without no score
+		assertEquals(200, response.getStatus());
+
+		
+		verify(assignmentRepository, times(2)).save(any(Assignment.class));
+
+		// Send a POST request with the JSON object
+		response = mvc.perform(MockMvcRequestBuilders
+		    .delete("/gradebook/assignment/44")
+		    .contentType(MediaType.APPLICATION_JSON)
+		    .accept(MediaType.APPLICATION_JSON))
+		    .andReturn().getResponse();
+
+		// verify return data with entry for one student without no score
+		assertEquals(200, response.getStatus());
+
+
+	}
+
+	
 	private static String asJsonString(final Object obj) {
 		try {
 

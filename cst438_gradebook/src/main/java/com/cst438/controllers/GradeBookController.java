@@ -1,12 +1,15 @@
 package com.cst438.controllers;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +29,7 @@ import com.cst438.domain.CourseRepository;
 import com.cst438.domain.Enrollment;
 import com.cst438.domain.GradebookDTO;
 import com.cst438.services.RegistrationService;
+import com.cst438.domain.AssignmentListDTO.AssignmentDTO;
 
 @RestController
 @CrossOrigin(origins = {"http://localhost:3000","http://localhost:3001"})
@@ -168,6 +172,91 @@ public class GradeBookController {
 		}
 		
 		return assignment;
+	}
+	
+	@PostMapping("/gradebook/assignment/add")
+	@Transactional
+	public AssignmentDTO createAssignment (@RequestBody AssignmentDTO assignment ) {
+		
+		System.out.println("Gradebook - adding assignment " + assignment);
+		String dueDate = assignment.dueDate;
+
+		Assignment a = new Assignment(assignment);
+		
+		Course courseBasedOnId = courseRepository.findById(assignment.courseId).orElse(null);
+		
+		if (courseBasedOnId == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid course id. ");
+		}
+		
+		a.setCourse(courseBasedOnId);
+		Assignment createdAssignment = assignmentRepository.save(a);
+		
+		AssignmentDTO ab = new AssignmentDTO(createdAssignment.getId(), createdAssignment.getCourse().getCourse_id(), createdAssignment.getName(), dueDate, createdAssignment.getCourse().getTitle()); 
+		
+		return ab;
+	}
+	
+	@PutMapping("/gradebook/assignment/modify-title/{id}")
+	@Transactional
+	public AssignmentDTO updateAssignment (@RequestBody AssignmentDTO assignmentBody, @PathVariable("id") Integer assignmentId) {
+		
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		checkAssignment(assignmentId, email);  // check that user name matches instructor email of the course.
+		
+
+		Assignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+		
+		if (assignment == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid grade primary key. " + assignmentId);
+		}
+		
+		assignment.setName(assignmentBody.assignmentName);
+		assignmentRepository.save(assignment);
+		System.out.println("Assignment name " + assignment);
+		AssignmentDTO a = new AssignmentDTO(assignment.getId(), assignment.getCourse().getCourse_id(), assignment.getName(), "", assignment.getCourse().getTitle()); 
+		a.setDate(assignment.getDueDate());
+		
+		return a;
+	}
+	
+	private boolean checkIfAssignmentsHaveGrades(int assignmentId) {
+		List<Assignment> assignments = assignmentRepository.findIfAssignmentHasBeenGradedById(assignmentId);
+		
+		// If there are assignments graded, then that means we can't delete.
+		if (assignments.size() > 0) {
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+	
+	@DeleteMapping("/gradebook/assignment/{id}")
+	@Transactional
+	public void deleteAssignment (@PathVariable("id") Integer assignmentId) {
+		
+
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		checkAssignment(assignmentId, email);  // check that user name matches instructor email of the course.
+		
+		Assignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+		
+		if (assignment == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Invalid grade primary key. " + assignmentId);
+		}
+		
+		boolean hasGradesEnteredAlready = checkIfAssignmentsHaveGrades(assignmentId);
+		
+		if (hasGradesEnteredAlready) {
+			System.out.println("INFO: Assignment has grades, unable to delete");
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Error: Assignment has entered, grades cannot delete. " + assignmentId);
+		}
+		
+		System.out.println("INFO: Assignment does not have grades, deleting...");
+		assignmentRepository.deleteById(assignmentId);
+		
+		
 	}
 
 }
