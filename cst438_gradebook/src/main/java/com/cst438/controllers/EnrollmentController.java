@@ -31,10 +31,24 @@ public class EnrollmentController {
 	@Transactional
 	public EnrollmentDTO addEnrollment(@RequestBody EnrollmentDTO enrollmentDTO) {
 		
-		//TODO  complete this method in homework 4
+		Enrollment enrollment = new Enrollment();
+		enrollment.setStudentEmail(enrollmentDTO.studentEmail);
+		enrollment.setStudentName(enrollmentDTO.studentName);
 		
-		return null;
+		Course selectedCourse = courseRepository.findById(enrollmentDTO.course_id).orElse(null);
 		
+		
+		if (selectedCourse == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course ID is invalid, and could not be found");
+		}
+		
+		enrollment.setCourse(selectedCourse);
+
+		enrollment = enrollmentRepository.save(enrollment);
+		
+		enrollmentDTO.id = enrollment.getId();
+		
+		return enrollmentDTO;
 	}
 
 }
