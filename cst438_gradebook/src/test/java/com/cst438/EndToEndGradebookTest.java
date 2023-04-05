@@ -1,14 +1,11 @@
 package com.cst438;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -17,13 +14,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 
 import com.cst438.domain.Assignment;
-import com.cst438.domain.AssignmentGrade;
 import com.cst438.domain.AssignmentGradeRepository;
-import com.cst438.domain.AssignmentListDTO;
 import com.cst438.domain.AssignmentRepository;
 import com.cst438.domain.Course;
 import com.cst438.domain.CourseRepository;
-import com.cst438.domain.Enrollment;
 import com.cst438.domain.EnrollmentRepository;
 
 
@@ -102,32 +96,33 @@ public class EndToEndGradebookTest {
 	        // Click on "Create Assignment" button
 	        driver.findElement(By.xpath("//*[@id=\"root\"]/div/div/form/div[1]/button")).click();
 	        
-	        // Wait 8 seconds for redirection
+	        // Wait 8 seconds for redirection - We redirect after success, this is to ensure redirection happens if successful
 			Thread.sleep(SLEEP_DURATION * 8);
 			
 			// Check if title exist after redirection, which indicates assignment created successfully
+			// We redirect only if successful, so if the user does not see this title in the DOM then that
+			// means the request failed
 			WebElement element = driver.findElement(By.xpath("//*[@id='root']/div/div/h4"));
 			assertEquals("Assignment(s) ready to grade:", element.getText());
-
 
 	        // Close the browser
 	        driver.close();
 		} catch (Exception ex) {
 			throw ex;
 		} finally {
+			
+			// We must search manually to get the assignment and clean up database
 			List<Assignment> assignments = assignmentRepository.findNeedGradingByEmail(TEST_INSTRUCTOR_EMAIL);
 			
 			
 			System.out.println("Deleting assignment");
-
 			for (Assignment a: assignments) {
 				System.out.println("Deleting assignment" + a.getName() + " " + "Test Assignment - FOR E2E" == a.getName());
 				if ("Test Assignment - FOR E2E".equals(a.getName())) {
 					assignmentRepository.deleteById(a.getId());
 				}
-				
-				
 			}
+			
 			System.out.println("Deleting course");
 			courseRepository.delete(c);
 			
